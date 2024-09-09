@@ -1,0 +1,11 @@
+###
+POST {{host}}/api/log
+
+###
+POST {{host}}/api/logTo/file
+
+###
+POST {{host}}/api/logTo/database
+
+###
+POST {{host}}/api/logToAll
