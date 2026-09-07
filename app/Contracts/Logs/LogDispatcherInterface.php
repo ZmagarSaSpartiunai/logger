@@ -11,16 +11,14 @@ interface LogDispatcherInterface
 {
     /**
      * @param LogMessage $message
-     * @param LogChannel|null $channel
-     * @return LogDeliveryResult
-     * @throws UnknownLogChannelException
-     */
-    public function dispatch(LogMessage $message, ?LogChannel $channel = null): LogDeliveryResult;
-
-    /**
-     * @param LogMessage $message
+     * @param array<int, LogChannel>|null $channels
      * @return array<int, LogDeliveryResult>
      * @throws UnknownLogChannelException
      */
-    public function broadcast(LogMessage $message): array;
+    public function dispatch(LogMessage $message, ?array $channels = null): array;
+
+    /**
+     * @return array<int, LogChannel>
+     */
+    public function channels(): array;
 }

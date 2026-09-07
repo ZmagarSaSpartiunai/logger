@@ -24,10 +24,11 @@ final class LogDispatcherTest extends TestCase
             LogChannel::File->value => $file,
         ]);
 
-        $delivery = $dispatcher->dispatch(LogMessage::create('hello'));
+        $deliveries = $dispatcher->dispatch(LogMessage::create('hello'));
 
-        $this->assertSame(LogChannel::Email, $delivery->channel);
-        $this->assertTrue($delivery->delivered);
+        $this->assertCount(1, $deliveries);
+        $this->assertSame(LogChannel::Email, $deliveries[0]->channel);
+        $this->assertTrue($deliveries[0]->delivered);
         $this->assertCount(1, $email->written);
         $this->assertCount(0, $file->written);
     }
@@ -41,10 +42,11 @@ final class LogDispatcherTest extends TestCase
             LogChannel::File->value => $file,
         ]);
 
-        $delivery = $dispatcher->dispatch(LogMessage::create('hello'), LogChannel::File);
+        $deliveries = $dispatcher->dispatch(LogMessage::create('hello'), [LogChannel::File]);
 
-        $this->assertSame(LogChannel::File, $delivery->channel);
-        $this->assertTrue($delivery->delivered);
+        $this->assertCount(1, $deliveries);
+        $this->assertSame(LogChannel::File, $deliveries[0]->channel);
+        $this->assertTrue($deliveries[0]->delivered);
         $this->assertCount(0, $email->written);
         $this->assertCount(1, $file->written);
     }
@@ -53,13 +55,13 @@ final class LogDispatcherTest extends TestCase
     {
         $dispatcher = $this->dispatcher([LogChannel::Email->value => new FailingChannel]);
 
-        $delivery = $dispatcher->dispatch(LogMessage::create('hello'));
+        $deliveries = $dispatcher->dispatch(LogMessage::create('hello'));
 
-        $this->assertFalse($delivery->delivered);
-        $this->assertSame('Transport is down.', $delivery->failureReason);
+        $this->assertFalse($deliveries[0]->delivered);
+        $this->assertSame('Transport is down.', $deliveries[0]->failureReason);
     }
 
-    public function test_it_broadcasts_to_every_configured_channel(): void
+    public function test_it_writes_to_every_given_channel(): void
     {
         $email = new RecordingChannel;
         $file = new RecordingChannel;
@@ -68,7 +70,7 @@ final class LogDispatcherTest extends TestCase
             LogChannel::File->value => $file,
         ]);
 
-        $deliveries = $dispatcher->broadcast(LogMessage::create('hello'));
+        $deliveries = $dispatcher->dispatch(LogMessage::create('hello'), $dispatcher->channels());
 
         $this->assertSame(
             [LogChannel::Email, LogChannel::File],
@@ -78,18 +80,30 @@ final class LogDispatcherTest extends TestCase
         $this->assertTrue($deliveries[1]->delivered);
     }
 
-    public function test_a_failing_channel_does_not_stop_the_broadcast(): void
+    public function test_a_failing_channel_does_not_stop_the_rest(): void
     {
         $file = new RecordingChannel;
-        $deliveries = $this->dispatcher([
+        $dispatcher = $this->dispatcher([
             LogChannel::Email->value => new FailingChannel,
             LogChannel::File->value => $file,
-        ])->broadcast(LogMessage::create('hello'));
+        ]);
+
+        $deliveries = $dispatcher->dispatch(LogMessage::create('hello'), $dispatcher->channels());
 
         $this->assertFalse($deliveries[0]->delivered);
         $this->assertSame('Transport is down.', $deliveries[0]->failureReason);
         $this->assertTrue($deliveries[1]->delivered);
         $this->assertCount(1, $file->written);
+    }
+
+    public function test_it_lists_the_configured_channels(): void
+    {
+        $dispatcher = $this->dispatcher([
+            LogChannel::Email->value => new RecordingChannel,
+            LogChannel::File->value => new RecordingChannel,
+        ]);
+
+        $this->assertSame([LogChannel::Email, LogChannel::File], $dispatcher->channels());
     }
 
     /**

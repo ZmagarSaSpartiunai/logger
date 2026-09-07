@@ -6,6 +6,7 @@ use App\Contracts\Logs\LogChannelFactoryInterface;
 use App\Contracts\Logs\LogChannelInterface;
 use App\Contracts\Logs\LogDispatcherInterface;
 use App\Enums\Logs\LogChannel;
+use App\Http\Requests\Logs\StoreLogRequest;
 use Tests\Support\Logs\FailingChannel;
 use Tests\Support\Logs\FakeChannelFactory;
 use Tests\Support\Logs\RecordingChannel;
@@ -52,7 +53,7 @@ final class LogApiTest extends TestCase
     {
         $response = $this->postJson(route('logs.store'), [
             'message' => 'hello',
-            'channel' => LogChannel::File->value,
+            'channels' => [LogChannel::File->value],
             'level' => 'warning',
         ]);
 
@@ -66,9 +67,27 @@ final class LogApiTest extends TestCase
         $this->assertCount(0, $this->email->written);
     }
 
-    public function test_it_broadcasts_to_every_channel(): void
+    public function test_it_logs_to_a_subset_of_channels(): void
     {
-        $response = $this->postJson(route('logs.broadcast'), ['message' => 'hello']);
+        $response = $this->postJson(route('logs.store'), [
+            'message' => 'hello',
+            'channels' => [LogChannel::Email->value, LogChannel::Database->value],
+        ]);
+
+        $response->assertAccepted()->assertJsonPath('data.deliveries', [
+            ['channel' => 'email', 'delivered' => true],
+            ['channel' => 'database', 'delivered' => true],
+        ]);
+
+        $this->assertCount(0, $this->file->written);
+    }
+
+    public function test_the_wildcard_reaches_every_channel(): void
+    {
+        $response = $this->postJson(route('logs.store'), [
+            'message' => 'hello',
+            'channels' => [StoreLogRequest::ALL_CHANNELS],
+        ]);
 
         $response->assertAccepted()->assertJsonPath('data.deliveries', [
             ['channel' => 'email', 'delivered' => true],
@@ -77,14 +96,17 @@ final class LogApiTest extends TestCase
         ]);
     }
 
-    public function test_a_partially_failing_broadcast_reports_multi_status(): void
+    public function test_a_partial_failure_reports_multi_status(): void
     {
         $this->swapChannels([
             LogChannel::Email->value => new FailingChannel,
             LogChannel::File->value => $this->file,
         ]);
 
-        $response = $this->postJson(route('logs.broadcast'), ['message' => 'hello']);
+        $response = $this->postJson(route('logs.store'), [
+            'message' => 'hello',
+            'channels' => [StoreLogRequest::ALL_CHANNELS],
+        ]);
 
         $response->assertStatus(207)->assertJsonPath('data.deliveries', [
             [
@@ -117,11 +139,20 @@ final class LogApiTest extends TestCase
 
     public function test_it_rejects_an_unknown_channel(): void
     {
-        $this->postJson(route('logs.store'), ['message' => 'hello', 'channel' => 'carrier-pigeon'])
+        $this->postJson(route('logs.store'), ['message' => 'hello', 'channels' => ['carrier-pigeon']])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors('channel');
+            ->assertJsonValidationErrors('channels.0');
 
         $this->assertCount(0, $this->email->written);
+    }
+
+    public function test_it_rejects_channels_that_are_not_a_list(): void
+    {
+        $this->postJson(route('logs.store'), ['message' => 'hello', 'channels' => 'file'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('channels');
+
+        $this->assertCount(0, $this->file->written);
     }
 
     public function test_it_rejects_an_unknown_level(): void
@@ -129,6 +160,11 @@ final class LogApiTest extends TestCase
         $this->postJson(route('logs.store'), ['message' => 'hello', 'level' => 'catastrophic'])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('level');
+    }
+
+    public function test_it_rejects_a_wrong_http_method(): void
+    {
+        $this->getJson(route('logs.store'))->assertStatus(405);
     }
 
     /**

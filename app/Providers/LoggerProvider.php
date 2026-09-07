@@ -52,7 +52,7 @@ class LoggerProvider extends ServiceProvider
             $channel = LogChannel::tryFrom((string) $name);
 
             if ($channel === null) {
-                throw UnknownLogChannelException::forName((string) $name, $this->channelNames());
+                throw UnknownLogChannelException::forName((string) $name, LogChannel::values());
             }
 
             $drivers[$channel->value] = $options['driver'];
@@ -75,13 +75,5 @@ class LoggerProvider extends ServiceProvider
         }
 
         return $channel;
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private function channelNames(): array
-    {
-        return array_column(LogChannel::cases(), 'value');
     }
 }

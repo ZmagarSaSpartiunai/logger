@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Contracts\Logs\LogDispatcherInterface;
 use App\Exceptions\Logs\UnknownLogChannelException;
-use App\Http\Requests\Logs\BroadcastLogRequest;
 use App\Http\Requests\Logs\StoreLogRequest;
 use App\Http\Resources\Logs\LogDeliveryResource;
 use App\Support\Logs\LogDeliveryResult;
@@ -31,21 +30,10 @@ final class LogController extends Controller
     {
         $message = $request->logMessage();
 
-        return $this->respond($message, [
-            $this->dispatcher->dispatch($message, $request->channel()),
-        ]);
-    }
-
-    /**
-     * @param BroadcastLogRequest $request
-     * @return JsonResponse
-     * @throws UnknownLogChannelException
-     */
-    public function broadcast(BroadcastLogRequest $request): JsonResponse
-    {
-        $message = $request->logMessage();
-
-        return $this->respond($message, $this->dispatcher->broadcast($message));
+        return $this->respond($message, $this->dispatcher->dispatch(
+            $message,
+            $request->selectedChannels($this->dispatcher->channels()),
+        ));
     }
 
     /**

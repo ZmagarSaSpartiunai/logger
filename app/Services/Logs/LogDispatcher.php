@@ -28,31 +28,27 @@ final class LogDispatcher implements LogDispatcherInterface
 
     /**
      * @param LogMessage $message
-     * @param LogChannel|null $channel
-     * @return LogDeliveryResult
-     * @throws UnknownLogChannelException
-     */
-    public function dispatch(LogMessage $message, ?LogChannel $channel = null): LogDeliveryResult
-    {
-        $target = $channel ?? $this->defaultChannel;
-
-        return $this->writeTo($this->factory->make($target), $target, $message);
-    }
-
-    /**
-     * @param LogMessage $message
+     * @param array<int, LogChannel>|null $channels
      * @return array<int, LogDeliveryResult>
      * @throws UnknownLogChannelException
      */
-    public function broadcast(LogMessage $message): array
+    public function dispatch(LogMessage $message, ?array $channels = null): array
     {
         $deliveries = [];
 
-        foreach ($this->factory->available() as $channel) {
+        foreach ($channels ?? [$this->defaultChannel] as $channel) {
             $deliveries[] = $this->writeTo($this->factory->make($channel), $channel, $message);
         }
 
         return $deliveries;
+    }
+
+    /**
+     * @return array<int, LogChannel>
+     */
+    public function channels(): array
+    {
+        return $this->factory->available();
     }
 
     /**
