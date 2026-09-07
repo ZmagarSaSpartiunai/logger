@@ -3,6 +3,10 @@
 use App\Http\Controllers\LogController;
 use Illuminate\Support\Facades\Route;
 
-Route::post('/log', [LogController::class, 'log']);
-Route::post('/logTo/{type}', [LogController::class, 'logTo']);
-Route::post('/logToAll', [LogController::class, 'logToAll']);
+Route::prefix('logs')
+    ->name('logs.')
+    ->middleware('throttle:60,1')
+    ->group(function (): void {
+        Route::post('/', [LogController::class, 'store'])->name('store');
+        Route::post('/broadcast', [LogController::class, 'broadcast'])->name('broadcast');
+    });

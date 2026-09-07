@@ -1,6 +1,9 @@
 <?php
 
+use App\Providers\AppServiceProvider;
+use App\Providers\LoggerProvider;
+
 return [
-    App\Providers\AppServiceProvider::class,
-    App\Providers\LoggerProvider::class,
+    AppServiceProvider::class,
+    LoggerProvider::class,
 ];

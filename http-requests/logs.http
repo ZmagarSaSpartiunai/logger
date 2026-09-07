@@ -1,11 +1,43 @@
-###
-POST {{host}}/api/log
+# Select the "local" environment in the run gutter, or {{host}} stays unsubstituted.
+# local = php artisan serve (:8000), sail = ./vendor/bin/sail up (:80)
 
-###
-POST {{host}}/api/logTo/file
+### Default channel -> 202
+POST {{host}}/api/logs
+Content-Type: application/json
 
-###
-POST {{host}}/api/logTo/database
+{
+  "message": "Sending by default channel."
+}
 
-###
-POST {{host}}/api/logToAll
+### Explicit channel and level -> 202
+POST {{host}}/api/logs
+Content-Type: application/json
+
+{
+  "message": "Sending by file channel.",
+  "channel": "file",
+  "level": "warning"
+}
+
+### Every channel -> 202 when all deliver, 207 when some fail, 502 when none do
+POST {{host}}/api/logs/broadcast
+Content-Type: application/json
+
+{
+  "message": "Sending by every channel."
+}
+
+### Unknown channel -> 422
+POST {{host}}/api/logs
+Content-Type: application/json
+
+{
+  "message": "Sending nowhere.",
+  "channel": "carrier-pigeon"
+}
+
+### Missing message -> 422
+POST {{host}}/api/logs
+Content-Type: application/json
+
+{}

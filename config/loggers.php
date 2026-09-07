@@ -1,18 +1,23 @@
 <?php
 
-use App\Enums\Logs\LogTypes;
-use App\Services\Logs\Loggers\DbLogger;
-use App\Services\Logs\Loggers\EmailLogger;
-use App\Services\Logs\Loggers\FileLogger;
+use App\Enums\Logs\LogChannel;
+use App\Services\Logs\Channels\DatabaseChannel;
+use App\Services\Logs\Channels\EmailChannel;
+use App\Services\Logs\Channels\FileChannel;
 
 return [
-    'default' => LogTypes::LOG_NAME_EMAIL,
-    'list' => [
-        EmailLogger::class => LogTypes::LOG_NAME_EMAIL,
-        FileLogger::class => LogTypes::LOG_NAME_FILE,
-        DbLogger::class => LogTypes::LOG_NAME_DB,
+    'default' => env('LOGGER_DEFAULT_CHANNEL', LogChannel::Email->value),
+
+    'channels' => [
+        LogChannel::Email->value => [
+            'driver' => EmailChannel::class,
+            'box' => env('LOGGER_EMAIL', 'logs@example.com'),
+        ],
+        LogChannel::File->value => [
+            'driver' => FileChannel::class,
+        ],
+        LogChannel::Database->value => [
+            'driver' => DatabaseChannel::class,
+        ],
     ],
-    LogTypes::LOG_NAME_EMAIL => [
-        'box' => env('LOGGER_EMAIL'),
-    ]
 ];
